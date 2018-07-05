@@ -1,3 +1,16 @@
+'''
+Aluno: Joao Paulo Kubaszewski Castilho
+Matricula: 1511100008
+
+Primeiramente foi lido o dataset diabetic_data.csv, e trocado todos os ? por NaN (isso para poder usar a Imputer
+e tratar os dados faltantes).
+
+Depois os dados foram discretizados utilizando a funcao discretiza. 10 por cento dos dados foram para testes, enquanto 90 para treinamento.
+
+Os algoritmos classificadores escolhidos foram: KNeighbors Classifier, Decision Tree Classifier e AdaBoost Classifier.
+
+'''
+
 import numpy as np
 from sklearn.preprocessing import Imputer
 from sklearn.feature_selection import SelectKBest
@@ -5,6 +18,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn import linear_model
 
 def discretiza(data, c):
     classes = np.unique(data[0:,c])
@@ -13,7 +30,11 @@ def discretiza(data, c):
     return data
 
 #Ler dados
-f = open('diabetic_data.csv')
+try:
+    f = open('diabetic_data.csv')
+except:
+    print('Arquivo diabetic_data.csv nao encontrado')
+    exit(0)
 data = np.array([l.split(',') for l in f.readlines()])
 data = data[1:,:]
 f.close()
@@ -33,7 +54,7 @@ for i in range(0, data.shape[1]):
 
 data = np.delete(data, (39, 40), axis = 1) #Colunas 39 e 40 sao constantes
 
-#Tratamento dos dados faltantes
+#Tratamento dos dados faltantes utilizado o Imputer
 imp = Imputer(missing_values = 'NaN', strategy='mean', axis=0)
 imp.fit(data)
 imp.transform(data)
@@ -57,22 +78,81 @@ print(features)
 #Passo 2: dividir o dataset
 XTrain, XTest, YTrain, YTest = train_test_split(X, y, test_size = 0.1)
 
-#Passo 2: Conjunto de Hiper Parametros
-param_grid = {
+# ** Executando KNeighbors Classifier ********************************** #
+print("\n\nExecutando KNeighbors Classifier...")
+
+#Conjunto de Hiper Parametros para KNeighbors Classifier
+KN_P = {
+    "n_neighbors": [3, 4, 5],
+    "weights" : ['uniform', 'distance'],
+    "algorithm" : ['ball_tree', 'kd_tree']
+}
+
+#Melhor combinacao de parametros
+gs = GridSearchCV(KNeighborsClassifier(), KN_P, scoring = 'accuracy', cv = 5)
+gs.fit(XTrain, YTrain.ravel())
+YHat = gs.predict(XTest)
+
+print("\nMelhor Combinacao de parametros:")
+print(gs.best_params_)
+
+#classification_report
+
+print("\nPerformance do Classificador:")
+print(classification_report(YHat, YTest))
+print("score: {:.2f}%".format(gs.best_score_ * 100))
+print("----------------------------------------------------")
+# ********************************** Executando KNeighbors Classifier ** #
+
+
+# ** Executando Decision Tree Classifier ********************************** #
+print("\n\nExecutando Decision Tree Classifier...")
+
+#Conjunto de Hiper Parametros para Decision Tree Classifier
+DT_P = {
     "criterion": ['gini', 'entropy'],
     "splitter" : ['best', 'random'],
     "class_weight" : ['balanced', None]
-    #"max_features" : ["auto", None]
-    #"presort" : [False, True]
 }
 
-#Passo 3: melhor combinacao de parametros para os 3 classificadores
-gs = GridSearchCV(DecisionTreeClassifier(), param_grid, scoring = 'accuracy', cv = 5)
+#Melhor combinacao de parametros
+gs = GridSearchCV(DecisionTreeClassifier(), DT_P, scoring = 'accuracy', cv = 5)
 gs.fit(XTrain, YTrain)
 YHat = gs.predict(XTest)
 
-print("\n\n")
-print(classification_report(YHat, YTest))
-print("score: {:.2f}%".format(gs.best_score_ * 100))
 print("\nMelhor Combinacao de parametros:")
 print(gs.best_params_)
+
+#classification_report
+
+print("\nPerformance do Classificador:")
+print(classification_report(YHat, YTest))
+print("score: {:.2f}%".format(gs.best_score_ * 100))
+print("----------------------------------------------------")
+# ********************************** Executando Decision Tree Classifier ** #
+
+
+# ** Executando AdaBoost Classifier ********************************** #
+print("\n\nExecutanto AdaBoost Classifier (demora um tempo)...")
+
+#Conjunto de Hiper Parametros para AdaBoost Classifier
+AB_P = {
+    "n_estimators" : [30, 40, 50],
+    "learning_rate" : [0.7, 0.9],
+    "algorithm" : ['SAMME', 'SAMME.R'],
+}
+
+#Melhor combinacao de parametros
+gs = GridSearchCV(AdaBoostClassifier(), AB_P, scoring = 'accuracy', cv = 5)
+gs.fit(XTrain, YTrain.ravel())
+YHat = gs.predict(XTest)
+
+print("\nMelhor Combinacao de parametros:")
+print(gs.best_params_)
+
+#classification_report
+
+print("\nPerformance do classificador:")
+print(classification_report(YHat, YTest))
+print("score: {:.2f}%".format(gs.best_score_ * 100))
+# ********************************** Executando AdaBoost Classifier ** #
